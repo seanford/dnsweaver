@@ -80,6 +80,7 @@ func TestHTTP_Discover_Timeout(t *testing.T) {
 	defer server.Close()
 
 	src := New(
+		WithLogger(testLogger()),
 		WithConfig(Config{
 			Endpoint:     server.URL,
 			PollInterval: time.Second,
@@ -100,6 +101,7 @@ func TestHTTP_Discover_Non200(t *testing.T) {
 	defer server.Close()
 
 	src := New(
+		WithLogger(testLogger()),
 		WithConfig(Config{
 			Endpoint:     server.URL,
 			PollInterval: time.Second,
@@ -120,6 +122,7 @@ func TestHTTP_Discover_MalformedPayload(t *testing.T) {
 	defer server.Close()
 
 	src := New(
+		WithLogger(testLogger()),
 		WithConfig(Config{
 			Endpoint:     server.URL,
 			PollInterval: time.Second,
@@ -142,6 +145,7 @@ func TestHTTP_Discover_PollIntervalCache(t *testing.T) {
 	defer server.Close()
 
 	src := New(
+		WithLogger(testLogger()),
 		WithConfig(Config{
 			Endpoint:     server.URL,
 			PollInterval: time.Hour,
