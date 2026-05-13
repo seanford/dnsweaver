@@ -74,9 +74,8 @@ func TestHTTP_Discover_Headers(t *testing.T) {
 }
 
 func TestHTTP_Discover_Timeout(t *testing.T) {
-	server := httptest.NewServer(stdhttp.HandlerFunc(func(w stdhttp.ResponseWriter, _ *stdhttp.Request) {
-		time.Sleep(1500 * time.Millisecond)
-		_, _ = w.Write([]byte(`http: {routers: {app: {rule: "Host(` + "`app.example.com`" + `)"}}}`))
+	server := httptest.NewServer(stdhttp.HandlerFunc(func(_ stdhttp.ResponseWriter, r *stdhttp.Request) {
+		<-r.Context().Done()
 	}))
 	defer server.Close()
 
