@@ -377,6 +377,19 @@ func (c *Config) HasFileDiscovery() bool {
 	return c.Sources != nil && c.Sources.HasFileDiscovery()
 }
 
+// HasDiscovery returns true if any source has file or HTTP discovery configured.
+func (c *Config) HasDiscovery() bool {
+	return c.Sources != nil && c.Sources.HasDiscovery()
+}
+
+// DiscoveryPollInterval returns the smallest configured source discovery poll interval.
+func (c *Config) DiscoveryPollInterval() time.Duration {
+	if c.Sources == nil {
+		return 60 * time.Second
+	}
+	return c.Sources.DiscoveryPollInterval()
+}
+
 // String returns a summary of the configuration (without secrets).
 func (c *Config) String() string {
 	sourceNames := "[]"

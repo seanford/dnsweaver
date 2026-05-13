@@ -735,3 +735,20 @@ func TestParser_DiscoverFromFiles_DefaultEntryPoints_ExplicitWins(t *testing.T) 
 		t.Errorf("expected webB, got %q", extractions[0].EntryPoint)
 	}
 }
+
+func TestParser_ParseConfigContent_TOMLFallbackWithoutExtension(t *testing.T) {
+	parser := NewParser()
+	content := []byte(`[http.routers.myapp]
+rule = "Host(` + "`" + `app.example.com` + "`" + `)"`)
+
+	extractions, err := parser.ParseConfigContent(content, "http://example.com/traefik-config")
+	if err != nil {
+		t.Fatalf("ParseConfigContent() error = %v", err)
+	}
+	if len(extractions) != 1 {
+		t.Fatalf("expected 1 extraction, got %d", len(extractions))
+	}
+	if extractions[0].Hostname != "app.example.com" {
+		t.Errorf("Hostname = %q, want app.example.com", extractions[0].Hostname)
+	}
+}

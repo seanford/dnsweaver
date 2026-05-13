@@ -321,6 +321,88 @@ func TestSourceConfig_HasFileDiscovery(t *testing.T) {
 	}
 }
 
+func TestSourceConfig_HasDiscovery(t *testing.T) {
+	tests := []struct {
+		name    string
+		envVars map[string]string
+		want    bool
+	}{
+		{
+			name:    "no discovery configured",
+			envVars: map[string]string{},
+			want:    false,
+		},
+		{
+			name: "file discovery configured",
+			envVars: map[string]string{
+				"DNSWEAVER_SOURCE_TRAEFIK_FILE_PATHS": "/rules",
+			},
+			want: true,
+		},
+		{
+			name: "http discovery configured",
+			envVars: map[string]string{
+				"DNSWEAVER_SOURCES":             "http",
+				"DNSWEAVER_SOURCE_HTTP_ENDPOINT": "http://example.com/routes",
+			},
+			want: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			os.Clearenv()
+			for k, v := range tt.envVars {
+				os.Setenv(k, v)
+			}
+			cfg := loadSourceConfig()
+			if got := cfg.HasDiscovery(); got != tt.want {
+				t.Errorf("HasDiscovery() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestLoadSourceInstanceConfig_HTTP(t *testing.T) {
+	os.Clearenv()
+	os.Setenv("DNSWEAVER_SOURCE_HTTP_ENDPOINT", "http://mantrae:3000/api/thefordestate")
+	os.Setenv("DNSWEAVER_SOURCE_HTTP_POLL_INTERVAL", "5s")
+	os.Setenv("DNSWEAVER_SOURCE_HTTP_POLL_TIMEOUT", "7s")
+	os.Setenv("DNSWEAVER_SOURCE_HTTP_HEADERS", "Traefik-Instance-Name:prod,Traefik-Instance-Url:http://traefik.lab:8080")
+
+	got := loadSourceInstanceConfig("http")
+
+	if got.HTTP.Endpoint != "http://mantrae:3000/api/thefordestate" {
+		t.Errorf("HTTP.Endpoint = %q", got.HTTP.Endpoint)
+	}
+	if got.HTTP.PollInterval != 5*time.Second {
+		t.Errorf("HTTP.PollInterval = %v, want 5s", got.HTTP.PollInterval)
+	}
+	if got.HTTP.PollTimeout != 7*time.Second {
+		t.Errorf("HTTP.PollTimeout = %v, want 7s", got.HTTP.PollTimeout)
+	}
+	if got.HTTP.Headers["Traefik-Instance-Name"] != "prod" {
+		t.Errorf("HTTP.Headers[Traefik-Instance-Name] = %q", got.HTTP.Headers["Traefik-Instance-Name"])
+	}
+	if got.HTTP.Headers["Traefik-Instance-Url"] != "http://traefik.lab:8080" {
+		t.Errorf("HTTP.Headers[Traefik-Instance-Url] = %q", got.HTTP.Headers["Traefik-Instance-Url"])
+	}
+}
+
+func TestSourceConfig_DiscoveryPollInterval(t *testing.T) {
+	os.Clearenv()
+	os.Setenv("DNSWEAVER_SOURCES", "traefik,http")
+	os.Setenv("DNSWEAVER_SOURCE_TRAEFIK_FILE_PATHS", "/rules")
+	os.Setenv("DNSWEAVER_SOURCE_TRAEFIK_POLL_INTERVAL", "30s")
+	os.Setenv("DNSWEAVER_SOURCE_HTTP_ENDPOINT", "http://example.com/routes")
+	os.Setenv("DNSWEAVER_SOURCE_HTTP_POLL_INTERVAL", "5s")
+
+	cfg := loadSourceConfig()
+	if got := cfg.DiscoveryPollInterval(); got != 5*time.Second {
+		t.Errorf("DiscoveryPollInterval() = %v, want 5s", got)
+	}
+}
+
 func TestSourceEnvPrefix(t *testing.T) {
 	tests := []struct {
 		name string

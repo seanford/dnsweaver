@@ -94,6 +94,7 @@ type FileKubernetesConfig struct {
 type FileSourceConfig struct {
 	Name          string                   `yaml:"name"`                     // traefik, caddy, dnsweaver, etc.
 	FileDiscovery *FileFileDiscoveryConfig `yaml:"file_discovery,omitempty"` // Optional file discovery settings
+	HTTP          *FileHTTPSourceConfig    `yaml:"http,omitempty"`           // Optional HTTP discovery settings
 }
 
 // FileFileDiscoveryConfig holds file-based discovery settings.
@@ -102,6 +103,14 @@ type FileFileDiscoveryConfig struct {
 	Pattern      string   `yaml:"pattern,omitempty"`       // Glob pattern for files
 	PollInterval string   `yaml:"poll_interval,omitempty"` // How often to check files
 	WatchMethod  string   `yaml:"watch_method,omitempty"`  // auto, inotify, poll
+}
+
+// FileHTTPSourceConfig holds HTTP discovery settings.
+type FileHTTPSourceConfig struct {
+	Endpoint     string            `yaml:"endpoint,omitempty"`      // URL to fetch
+	PollInterval string            `yaml:"poll_interval,omitempty"` // Fetch interval
+	PollTimeout  string            `yaml:"poll_timeout,omitempty"`  // Request timeout
+	Headers      map[string]string `yaml:"headers,omitempty"`       // Request headers
 }
 
 // FileProviderConfig holds configuration for a DNS provider instance.
@@ -190,6 +199,15 @@ func (c *FileConfig) interpolateEnvVars() {
 			fd.Pattern = InterpolateEnvVars(fd.Pattern)
 			fd.PollInterval = InterpolateEnvVars(fd.PollInterval)
 			fd.WatchMethod = InterpolateEnvVars(fd.WatchMethod)
+		}
+		if c.Sources[i].HTTP != nil {
+			http := c.Sources[i].HTTP
+			http.Endpoint = InterpolateEnvVars(http.Endpoint)
+			http.PollInterval = InterpolateEnvVars(http.PollInterval)
+			http.PollTimeout = InterpolateEnvVars(http.PollTimeout)
+			for k, v := range http.Headers {
+				http.Headers[k] = InterpolateEnvVars(v)
+			}
 		}
 	}
 

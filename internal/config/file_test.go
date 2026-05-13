@@ -97,6 +97,14 @@ sources:
         - /config/traefik/dynamic
       pattern: "*.yml"
       poll_interval: 60s
+  - name: http
+    http:
+      endpoint: http://mantrae:3000/api/thefordestate?token=${TEST_TOKEN}
+      poll_interval: 5s
+      poll_timeout: 6s
+      headers:
+        Traefik-Instance-Name: prod
+        Traefik-Instance-Url: http://traefik.lab:8080
 
 providers:
   - name: internal
@@ -159,8 +167,8 @@ server:
 	}
 
 	// Verify sources
-	if len(cfg.Sources) != 1 {
-		t.Fatalf("sources count = %d, want 1", len(cfg.Sources))
+	if len(cfg.Sources) != 2 {
+		t.Fatalf("sources count = %d, want 2", len(cfg.Sources))
 	}
 	if cfg.Sources[0].Name != "traefik" {
 		t.Errorf("sources[0].name = %q, want %q", cfg.Sources[0].Name, "traefik")
@@ -170,6 +178,15 @@ server:
 	}
 	if len(cfg.Sources[0].FileDiscovery.Paths) != 1 {
 		t.Errorf("sources[0].file_discovery.paths count = %d, want 1", len(cfg.Sources[0].FileDiscovery.Paths))
+	}
+	if cfg.Sources[1].Name != "http" {
+		t.Errorf("sources[1].name = %q, want %q", cfg.Sources[1].Name, "http")
+	}
+	if cfg.Sources[1].HTTP == nil {
+		t.Fatal("sources[1].http is nil")
+	}
+	if cfg.Sources[1].HTTP.Endpoint != "http://mantrae:3000/api/thefordestate?token=secret-from-env" {
+		t.Errorf("sources[1].http.endpoint = %q", cfg.Sources[1].HTTP.Endpoint)
 	}
 
 	// Verify providers

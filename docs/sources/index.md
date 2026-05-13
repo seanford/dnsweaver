@@ -36,6 +36,14 @@ dnsweaver discovers hostnames to manage from multiple **sources**. Each source t
 
     [:octicons-arrow-right-24: Traefik Files](traefik-files.md)
 
+-   :material-cloud-download:{ .lg .middle } **HTTP Provider**
+
+    ---
+
+    Poll a Traefik-style dynamic configuration endpoint over HTTP.
+
+    [:octicons-arrow-right-24: HTTP Source](http.md)
+
 -   :material-rocket-launch:{ .lg .middle } **Caddy Labels**
 
     ---
@@ -87,8 +95,9 @@ When multiple sources provide the same hostname, dnsweaver uses the following pr
 3. **Caddy labels** (caddy-docker-proxy configuration)
 4. **nginx-proxy labels** (`VIRTUAL_HOST`)
 5. **Traefik files** (dynamic configuration)
-6. **Kubernetes** (resource spec hostnames)
-7. **Proxmox VE** (VM/LXC name + domain suffix)
+6. **HTTP provider** (remote Traefik-style dynamic config)
+7. **Kubernetes** (resource spec hostnames)
+8. **Proxmox VE** (VM/LXC name + domain suffix)
 
 ## Hostname Extraction
 
@@ -101,6 +110,7 @@ Each source extracts hostnames differently:
 | Docker (nginx-proxy) | `VIRTUAL_HOST` label | `VIRTUAL_HOST=app.example.com` |
 | Docker Swarm | Service labels | Same as Docker |
 | Traefik Files | `http.routers.*.rule` in YAML/TOML | Standard Traefik config |
+| HTTP Provider | Traefik config payload over HTTP | `http.routers.*.rule` in fetched YAML/TOML |
 | Native | `dnsweaver.hostname` | `dnsweaver.hostname=app.example.com` |
 | Kubernetes | Resource spec fields | `.spec.rules[].host` (Ingress) |
 | Proxmox VE | VM/LXC name + domain suffix | `webserver` + `home.example.com` |

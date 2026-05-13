@@ -144,15 +144,45 @@ func (p *Parser) matchesAnyPattern(name string, patterns []string) bool {
 // parseConfigFile parses a Traefik config file, detecting format by extension.
 // Supports YAML (.yml, .yaml) and TOML (.toml) formats.
 func (p *Parser) parseConfigFile(path string) ([]HostnameExtraction, error) {
-	ext := strings.ToLower(filepath.Ext(path))
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return nil, fmt.Errorf("reading file: %w", err)
+	}
+
+	return p.ParseConfigContent(data, path)
+}
+
+// ParseConfigContent parses Traefik dynamic configuration payloads.
+//
+// The format is detected from formatHint extension when available:
+//   - .toml -> TOML
+//   - .yml/.yaml -> YAML
+//
+// For unknown extensions (or no extension), YAML is attempted first and
+// TOML is used as a fallback.
+func (p *Parser) ParseConfigContent(data []byte, formatHint string) ([]HostnameExtraction, error) {
+	return p.parseConfigData(data, formatHint, formatHint)
+}
+
+func (p *Parser) parseConfigData(data []byte, formatHint, source string) ([]HostnameExtraction, error) {
+	ext := strings.ToLower(filepath.Ext(formatHint))
 	switch ext {
 	case ".toml":
-		return p.parseTOMLFile(path)
+		return p.parseTOMLData(data, source)
 	case ".yml", ".yaml":
-		return p.parseYAMLFile(path)
+		return p.parseYAMLData(data, source)
 	default:
-		// Try YAML as fallback for unknown extensions
-		return p.parseYAMLFile(path)
+		extractions, yamlErr := p.parseYAMLData(data, source)
+		if yamlErr == nil {
+			return extractions, nil
+		}
+
+		extractions, tomlErr := p.parseTOMLData(data, source)
+		if tomlErr == nil {
+			return extractions, nil
+		}
+
+		return nil, fmt.Errorf("parsing YAML failed: %w; parsing TOML failed: %v", yamlErr, tomlErr)
 	}
 }
 
@@ -163,14 +193,7 @@ func (p *Parser) parseYAMLFile(path string) ([]HostnameExtraction, error) {
 	if err != nil {
 		return nil, fmt.Errorf("reading file: %w", err)
 	}
-
-	// Parse YAML into a generic structure
-	var config traefikFileConfig
-	if err := yaml.Unmarshal(data, &config); err != nil {
-		return nil, fmt.Errorf("parsing YAML: %w", err)
-	}
-
-	return p.extractFromConfig(&config, path)
+	return p.parseYAMLData(data, path)
 }
 
 // parseTOMLFile parses a single Traefik TOML config file.
@@ -180,14 +203,25 @@ func (p *Parser) parseTOMLFile(path string) ([]HostnameExtraction, error) {
 	if err != nil {
 		return nil, fmt.Errorf("reading file: %w", err)
 	}
+	return p.parseTOMLData(data, path)
+}
 
-	// Parse TOML into a generic structure
+func (p *Parser) parseYAMLData(data []byte, source string) ([]HostnameExtraction, error) {
+	var config traefikFileConfig
+	if err := yaml.Unmarshal(data, &config); err != nil {
+		return nil, fmt.Errorf("parsing YAML: %w", err)
+	}
+
+	return p.extractFromConfig(&config, source)
+}
+
+func (p *Parser) parseTOMLData(data []byte, source string) ([]HostnameExtraction, error) {
 	var config traefikFileConfig
 	if err := toml.Unmarshal(data, &config); err != nil {
 		return nil, fmt.Errorf("parsing TOML: %w", err)
 	}
 
-	return p.extractFromConfig(&config, path)
+	return p.extractFromConfig(&config, source)
 }
 
 // extractFromConfig extracts hostnames from a parsed Traefik config.

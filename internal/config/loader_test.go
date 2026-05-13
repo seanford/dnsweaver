@@ -291,3 +291,38 @@ func TestConvertFileSourcesWithFileDiscovery(t *testing.T) {
 		t.Errorf("WatchMethod = %q, want %q", fd.WatchMethod, "inotify")
 	}
 }
+
+func TestConvertFileSourcesWithHTTP(t *testing.T) {
+	input := []FileSourceConfig{
+		{
+			Name: "http",
+			HTTP: &FileHTTPSourceConfig{
+				Endpoint:     "http://mantrae:3000/api/thefordestate",
+				PollInterval: "5s",
+				PollTimeout:  "4s",
+				Headers: map[string]string{
+					"Traefik-Instance-Name": "prod",
+				},
+			},
+		},
+	}
+
+	result := convertFileSources(input)
+	if result == nil || len(result.Instances) != 1 {
+		t.Fatalf("unexpected result: %+v", result)
+	}
+
+	httpCfg := result.Instances[0].HTTP
+	if httpCfg.Endpoint != "http://mantrae:3000/api/thefordestate" {
+		t.Errorf("HTTP.Endpoint = %q", httpCfg.Endpoint)
+	}
+	if httpCfg.PollInterval.String() != "5s" {
+		t.Errorf("HTTP.PollInterval = %s, want 5s", httpCfg.PollInterval)
+	}
+	if httpCfg.PollTimeout.String() != "4s" {
+		t.Errorf("HTTP.PollTimeout = %s, want 4s", httpCfg.PollTimeout)
+	}
+	if httpCfg.Headers["Traefik-Instance-Name"] != "prod" {
+		t.Errorf("HTTP.Headers[Traefik-Instance-Name] = %q", httpCfg.Headers["Traefik-Instance-Name"])
+	}
+}
