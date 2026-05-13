@@ -23,6 +23,7 @@ import (
 	"gitlab.bluewillows.net/root/dnsweaver/providers/webhook"
 	"gitlab.bluewillows.net/root/dnsweaver/sources/caddy"
 	dnsweaversource "gitlab.bluewillows.net/root/dnsweaver/sources/dnsweaver"
+	httpsource "gitlab.bluewillows.net/root/dnsweaver/sources/http"
 	k8ssource "gitlab.bluewillows.net/root/dnsweaver/sources/kubernetes"
 	"gitlab.bluewillows.net/root/dnsweaver/sources/nginxproxy"
 	proxmoxsource "gitlab.bluewillows.net/root/dnsweaver/sources/proxmox"
@@ -159,6 +160,15 @@ func registerSources(registry *source.Registry, cfg *config.Config, logger *slog
 			logger.Info("registered source",
 				slog.String("name", name),
 			)
+		case "http":
+			src := createHTTPSource(cfg, logger)
+			if err := registry.Register(src); err != nil {
+				return fmt.Errorf("registering http source: %w", err)
+			}
+			logger.Info("registered source",
+				slog.String("name", name),
+				slog.Bool("file_discovery", src.SupportsDiscovery()),
+			)
 		default:
 			logger.Warn("unknown source, skipping", slog.String("source", name))
 		}
@@ -232,6 +242,25 @@ func createTraefikSource(cfg *config.Config, logger *slog.Logger) *traefik.Traef
 	}
 
 	return traefik.New(opts...)
+}
+
+// createHTTPSource creates an HTTP-based Traefik config discovery source.
+func createHTTPSource(cfg *config.Config, logger *slog.Logger) *httpsource.HTTP {
+	opts := []httpsource.Option{
+		httpsource.WithLogger(logger),
+	}
+
+	srcCfg := cfg.GetSourceInstance("http")
+	if srcCfg != nil {
+		opts = append(opts, httpsource.WithConfig(httpsource.Config{
+			Endpoint:     srcCfg.HTTP.Endpoint,
+			PollInterval: srcCfg.HTTP.PollInterval,
+			PollTimeout:  srcCfg.HTTP.PollTimeout,
+			Headers:      srcCfg.HTTP.Headers,
+		}))
+	}
+
+	return httpsource.New(opts...)
 }
 
 // registerProviderFactories registers all available DNS provider factories.

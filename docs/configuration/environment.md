@@ -118,7 +118,7 @@ Replace `{NAME}` with your instance name. For example, instance `internal-dns` u
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `DNSWEAVER_SOURCES` | `traefik` | Comma-separated list: `traefik`, `caddy`, `nginx-proxy`, `dnsweaver`, `kubernetes`, `proxmox` |
+| `DNSWEAVER_SOURCES` | `traefik` | Comma-separated list: `traefik`, `http`, `caddy`, `nginx-proxy`, `dnsweaver`, `kubernetes`, `proxmox` |
 
 !!! warning "Deprecated Variable"
     `DNSWEAVER_SOURCE` (singular) is deprecated and will be removed in v2.0. Use `DNSWEAVER_SOURCES` (plural) instead.
@@ -133,6 +133,15 @@ Replace `{NAME}` with your instance name. For example, instance `internal-dns` u
 | `DNSWEAVER_SOURCE_TRAEFIK_POLL_INTERVAL` | `60s` | File re-scan interval |
 | `DNSWEAVER_SOURCE_TRAEFIK_WATCH_METHOD` | `auto` | Watch method: `auto`, `inotify`, `poll` |
 | `DNSWEAVER_SOURCE_TRAEFIK_DEFAULT_ENTRYPOINTS` | *(none)* | Comma-separated entrypoints to assign to Traefik routers that declare none. Mirrors Traefik's [`asDefault`](https://doc.traefik.io/traefik/reference/install-configuration/entrypoints/#opt-asdefault) setting; required if you flag any entrypoint `asDefault = true` in Traefik so unlabeled routers don't become wildcards in dnsweaver. See [Traefik `asDefault` Entrypoints](../sources/swarm.md#traefik-asdefault-entrypoints). |
+
+### HTTP Source Settings
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `DNSWEAVER_SOURCE_HTTP_ENDPOINT` | *(none)* | HTTP URL that returns a Traefik dynamic config payload |
+| `DNSWEAVER_SOURCE_HTTP_POLL_INTERVAL` | `60s` | How often the HTTP source re-fetches payloads |
+| `DNSWEAVER_SOURCE_HTTP_POLL_TIMEOUT` | `5s` | Request timeout for each fetch |
+| `DNSWEAVER_SOURCE_HTTP_HEADERS` | *(none)* | Comma-separated `Key:Value` request headers |
 
 ### Proxmox VE Source Settings
 

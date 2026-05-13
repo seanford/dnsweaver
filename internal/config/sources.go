@@ -23,6 +23,29 @@ type SourceInstanceConfig struct {
 	// Traefik's `entryPoints.<name>.asDefault = true` configuration.
 	// See sources/traefik.WithDefaultEntryPoints. Ignored for non-traefik sources.
 	DefaultEntryPoints []string
+
+	// HTTP contains HTTP polling discovery configuration.
+	// Used by the "http" source for Traefik-style dynamic config payloads.
+	HTTP HTTPDiscoveryConfig
+}
+
+// HTTPDiscoveryConfig holds settings for HTTP-based discovery.
+type HTTPDiscoveryConfig struct {
+	Endpoint     string
+	PollInterval time.Duration
+	PollTimeout  time.Duration
+	Headers      map[string]string
+}
+
+func defaultHTTPDiscoveryConfig() HTTPDiscoveryConfig {
+	return HTTPDiscoveryConfig{
+		PollInterval: 60 * time.Second,
+		PollTimeout:  5 * time.Second,
+	}
+}
+
+func (c HTTPDiscoveryConfig) IsEnabled() bool {
+	return c.Endpoint != ""
 }
 
 // SourceConfig holds all source configuration.
@@ -101,6 +124,7 @@ func loadSourceInstanceConfig(name string) *SourceInstanceConfig {
 	cfg := &SourceInstanceConfig{
 		Name:          name,
 		FileDiscovery: source.DefaultFileDiscoveryConfig(),
+		HTTP:          defaultHTTPDiscoveryConfig(),
 	}
 
 	// FILE_PATHS - comma-separated list of paths to watch
@@ -126,6 +150,7 @@ func loadSourceInstanceConfig(name string) *SourceInstanceConfig {
 	if intervalStr := getEnv(prefix + "POLL_INTERVAL"); intervalStr != "" {
 		if interval, err := time.ParseDuration(intervalStr); err == nil && interval >= time.Second {
 			cfg.FileDiscovery.PollInterval = interval
+			cfg.HTTP.PollInterval = interval
 		}
 		// Silently use default for invalid values (per config design)
 	}
@@ -133,6 +158,43 @@ func loadSourceInstanceConfig(name string) *SourceInstanceConfig {
 	// WATCH_METHOD - auto, inotify, poll (default: auto)
 	if method := getEnv(prefix + "WATCH_METHOD"); method != "" {
 		cfg.FileDiscovery.WatchMethod = strings.ToLower(method)
+	}
+
+	// ENDPOINT - URL for HTTP source payload polling
+	if endpoint := getEnv(prefix + "ENDPOINT"); endpoint != "" {
+		cfg.HTTP.Endpoint = strings.TrimSpace(endpoint)
+	}
+
+	// POLL_TIMEOUT - timeout for HTTP source requests
+	if timeoutStr := getEnv(prefix + "POLL_TIMEOUT"); timeoutStr != "" {
+		if timeout, err := time.ParseDuration(timeoutStr); err == nil && timeout >= time.Second {
+			cfg.HTTP.PollTimeout = timeout
+		}
+	}
+
+	// HEADERS - comma-separated list of key:value pairs
+	// Example: "X-Token:abc,Traefik-Instance-Name:prod"
+	if headersStr := getEnv(prefix + "HEADERS"); headersStr != "" {
+		headers := make(map[string]string)
+		for _, pair := range strings.Split(headersStr, ",") {
+			pair = strings.TrimSpace(pair)
+			if pair == "" {
+				continue
+			}
+			key, value, ok := strings.Cut(pair, ":")
+			if !ok {
+				continue
+			}
+			key = strings.TrimSpace(key)
+			value = strings.TrimSpace(value)
+			if key == "" {
+				continue
+			}
+			headers[key] = value
+		}
+		if len(headers) > 0 {
+			cfg.HTTP.Headers = headers
+		}
 	}
 
 	// DEFAULT_ENTRYPOINTS - traefik-only: which entrypoints unlabeled routers
@@ -170,4 +232,38 @@ func (c *SourceConfig) HasFileDiscovery() bool {
 		}
 	}
 	return false
+}
+
+// HasDiscovery returns true if any source has file or HTTP discovery configured.
+func (c *SourceConfig) HasDiscovery() bool {
+	for _, inst := range c.Instances {
+		if inst.FileDiscovery.IsEnabled() || inst.HTTP.IsEnabled() {
+			return true
+		}
+	}
+	return false
+}
+
+// DiscoveryPollInterval returns the smallest configured poll interval among
+// enabled discovery sources. Falls back to 60s if none are enabled.
+func (c *SourceConfig) DiscoveryPollInterval() time.Duration {
+	min := 60 * time.Second
+	found := false
+
+	for _, inst := range c.Instances {
+		if inst.FileDiscovery.IsEnabled() && inst.FileDiscovery.PollInterval >= time.Second {
+			if !found || inst.FileDiscovery.PollInterval < min {
+				min = inst.FileDiscovery.PollInterval
+				found = true
+			}
+		}
+		if inst.HTTP.IsEnabled() && inst.HTTP.PollInterval >= time.Second {
+			if !found || inst.HTTP.PollInterval < min {
+				min = inst.HTTP.PollInterval
+				found = true
+			}
+		}
+	}
+
+	return min
 }

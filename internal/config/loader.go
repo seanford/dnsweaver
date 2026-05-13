@@ -144,6 +144,7 @@ func convertFileSources(fileSources []FileSourceConfig) *SourceConfig {
 		inst := &SourceInstanceConfig{
 			Name:          fs.Name,
 			FileDiscovery: source.DefaultFileDiscoveryConfig(),
+			HTTP:          defaultHTTPDiscoveryConfig(),
 		}
 
 		if fs.FileDiscovery != nil {
@@ -158,6 +159,26 @@ func convertFileSources(fileSources []FileSourceConfig) *SourceConfig {
 			}
 			if fs.FileDiscovery.WatchMethod != "" {
 				inst.FileDiscovery.WatchMethod = strings.ToLower(fs.FileDiscovery.WatchMethod)
+			}
+		}
+
+		if fs.HTTP != nil {
+			inst.HTTP.Endpoint = fs.HTTP.Endpoint
+			if fs.HTTP.PollInterval != "" {
+				if interval, err := time.ParseDuration(fs.HTTP.PollInterval); err == nil && interval >= time.Second {
+					inst.HTTP.PollInterval = interval
+				}
+			}
+			if fs.HTTP.PollTimeout != "" {
+				if timeout, err := time.ParseDuration(fs.HTTP.PollTimeout); err == nil && timeout >= time.Second {
+					inst.HTTP.PollTimeout = timeout
+				}
+			}
+			if len(fs.HTTP.Headers) > 0 {
+				inst.HTTP.Headers = make(map[string]string, len(fs.HTTP.Headers))
+				for k, v := range fs.HTTP.Headers {
+					inst.HTTP.Headers[k] = v
+				}
 			}
 		}
 

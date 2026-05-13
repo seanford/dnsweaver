@@ -385,10 +385,13 @@ func run() error {
 		)
 	}
 
-	// Initialize file watcher for sources with file discovery (#22)
+	// Initialize source discovery watcher for discoverable sources (#22)
 	var fileWatcher *source.FileWatcher
-	if cfg.HasFileDiscovery() {
-		logger.Info("file discovery enabled, starting file watcher")
+	if cfg.HasDiscovery() {
+		pollInterval := cfg.DiscoveryPollInterval()
+		logger.Info("source discovery enabled, starting watcher",
+			slog.Duration("poll_interval", pollInterval),
+		)
 		fileWatcher = source.NewFileWatcher(sourceRegistry,
 			func(sourceName string, hostnames []source.Hostname) {
 				logger.Info("file watcher detected changes",
@@ -398,6 +401,7 @@ func run() error {
 				triggerReconcile()
 			},
 			source.WithWatcherLogger(logger),
+			source.WithPollInterval(pollInterval),
 		)
 	}
 
